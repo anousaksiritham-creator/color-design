@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="lo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Color Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--ink:#22201c;--mute:#6f6a60;--line:#e2ddd2;--brand:#8a5a3b}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1a18;--card:#26241f;--ink:#eee9df;--mute:#a59f93;--line:#3a372f;--brand:#d39a6e}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Lao",system-ui,sans-serif;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+h1{font-size:1.2rem;margin:0}h2{font-size:1rem;margin:0 0 10px}
+main{max-width:1150px;margin:auto;padding:16px;display:grid;gap:16px;grid-template-columns:340px 1fr}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+label{display:block;font-size:.85rem;color:var(--mute);margin:10px 0 4px}
+select,input,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:110px;font-family:monospace;font-size:.8rem}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--brand);background:var(--brand);color:#fff;cursor:pointer;margin-top:10px}
+button.ghost{background:transparent;color:var(--brand)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+#imgColors{display:flex;gap:4px;margin-top:6px}#imgColors span{width:28px;height:28px;border-radius:6px;border:1px solid var(--line)}
+#results{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(290px,1fr))}
+.pal h3{margin:0;font-size:.95rem}.pal .sub{color:var(--mute);font-size:.8rem;margin-bottom:8px}
+.sw{display:flex;align-items:center;gap:8px;font-size:.8rem;margin:3px 0}
+.sw i{width:26px;height:20px;border-radius:4px;border:1px solid var(--line);flex:none}
+.sw code{margin-left:auto;cursor:pointer}
+svg.bld{width:100%;height:auto;border-radius:8px;background:#cfe3ef}
+.tabs button{margin:0}
+.note{font-size:.8rem;color:var(--mute)}
+</style>
+</head>
+<body>
+<header><h1 data-t="title"></h1><button class="ghost" id="lang" style="margin:0">EN</button></header>
+<main>
+<section class="card">
+  <h2 data-t="input"></h2>
+  <label data-t="type"></label><select id="type"></select>
+  <label data-t="style"></label><select id="style"></select>
+  <label data-t="climate"></label><select id="climate"></select>
+  <label data-t="tone"></label><select id="tone"></select>
+  <label data-t="mood"></label><input id="mood">
+  <label data-t="img"></label><input type="file" id="img" accept="image/*">
+  <div id="imgColors"></div>
+  <div class="row"><button id="gen" data-t="gen"></button><button class="ghost" id="mkPrompt" data-t="prompt"></button></div>
+  <div id="promptBox" hidden>
+    <label data-t="promptHelp"></label><textarea id="promptTxt" readonly></textarea>
+    <button class="ghost" id="copy" data-t="copy"></button>
+    <label data-t="paste"></label><textarea id="jsonIn" placeholder='{"palettes":[...]}'></textarea>
+    <button id="load" data-t="show"></button>
+  </div>
+</section>
+<section>
+  <div class="row tabs" style="margin-bottom:12px"><button id="tabRes" data-t="results"></button><button class="ghost" id="tabSaved" data-t="saved"></button></div>
+  <div id="results"></div>
+</section>
+</main>
+<script>
+const T={
+lo:{title:"ອອກແບບຊຸດສີສະຖາປັດຕະຍະກຳ",input:"ຂໍ້ມູນອາຄານ",type:"ປະເພດອາຄານ",style:"ສະໄຕລ໌",climate:"ສະພາບອາກາດ / ທີ່ຕັ້ງ",tone:"ກຸ່ມໂທນສີ",mood:"ອາລົມທີ່ຕ້ອງການ (ບໍ່ບັງຄັບ)",img:"ຮູບອ້າງອີງ (ດຶງສີ)",gen:"ສ້າງຊຸດສີ",prompt:"ສ້າງ Prompt ສຳລັບ Claude",promptHelp:"1) Copy ໄປວາງໃນ claude.ai",copy:"Copy Prompt",paste:"2) ວາງ JSON ທີ່ Claude ຕອບກັບ",show:"ສະແດງຜົນ",results:"ຜົນລັບ",saved:"ທີ່ບັນທຶກໄວ້",save:"ບັນທຶກ",del:"ລົບ",png:"PNG",wall:"ຝາພາຍນອກ",roof:"ຫຼັງຄາ",trim:"ຂອບ / Trim",door:"ປະຕູ-ປ່ອງຢ້ຽມ",accent:"ສີເນັ້ນ",empty:"ຍັງບໍ່ມີ",copied:"Copy ແລ້ວ",bad:"JSON ບໍ່ຖືກຕ້ອງ",
+ mono:"ໂທນດຽວ",analog:"ສີໃກ້ຄຽງ",comp:"ສີກົງກັນຂ້າມ",triad:"ສາມຫຼ່ຽມ",split:"ກົງກັນຂ້າມແຍກ",fromImg:"ຈາກຮູບ"},
+en:{title:"Architectural Color Design",input:"Building info",type:"Building type",style:"Style",climate:"Climate / location",tone:"Tone group",mood:"Desired mood (optional)",img:"Reference image (extract colors)",gen:"Generate palettes",prompt:"Create prompt for Claude",promptHelp:"1) Copy and paste into claude.ai",copy:"Copy prompt",paste:"2) Paste the JSON Claude replies with",show:"Show",results:"Results",saved:"Saved",save:"Save",del:"Delete",png:"PNG",wall:"Exterior wall",roof:"Roof",trim:"Trim",door:"Doors & windows",accent:"Accent",empty:"Nothing yet",copied:"Copied",bad:"Invalid JSON",
+ mono:"Monochrome",analog:"Analogous",comp:"Complementary",triad:"Triadic",split:"Split complementary",fromImg:"From image"}};
+const OPT={
+type:[["house","ເຮືອນພັກອາໄສ","House"],["shop","ຮ້ານຄ້າ / ອາຄານພານິດ","Shop / Commercial"],["office","ຫ້ອງການ","Office"],["hotel","ໂຮງແຮມ / ຣີສອດ","Hotel / Resort"],["cafe","ຄາເຟ່ / ຮ້ານອາຫານ","Cafe / Restaurant"],["school","ໂຮງຮຽນ","School"],["temple","ວັດ / ສາສະນະສະຖານ","Temple"],["hospital","ໂຮງໝໍ / ຄລີນິກ","Hospital / Clinic"]],
+// [key, lo, en, hue, satMul, lightAdd, group]
+style:[
+["modern","ໂມເດີນ","Modern",0,.7,4,"m"],["contemporary","ຄອນເທມໂພຣາຣີ","Contemporary",30,.8,2,"m"],["minimal","ມິນິມອລ","Minimal",0,.3,8,"m"],["industrial","ອິນດັສທຣຽລ","Industrial",210,.5,-10,"m"],["loft","ລອຟທ໌","Loft",15,.6,-8,"m"],["brutalist","ບຣູທາລິສ","Brutalist",210,.2,-12,"m"],["hightech","ໄຮເທັກ","High-tech",210,.6,2,"m"],["deconstruct","ດີຄອນສຕັກຊັນ","Deconstructivism",0,.9,-2,"m"],["parametric","ພາຣາເມຕຣິກ","Parametric",190,.7,4,"m"],["postmodern","ໂພສທ໌ໂມເດີນ","Postmodern",330,1.4,0,"m"],["midcentury","ມິດເຊັນຈູຣີ","Mid-century Modern",35,1.2,-4,"m"],["bauhaus","ບາວເຮົາສ໌","Bauhaus",0,1.3,4,"m"],["intlstyle","ອິນເຕີເນຊັນແນລ","International Style",0,.2,10,"m"],["green","ອາຄານຂຽວ / ຍືນຍົງ","Green / Sustainable",100,.8,0,"m"],["luxury","ຫຼູຫຼາ","Luxury",40,.7,-4,"m"],
+["lao","ລາວປະເພນີ","Traditional Lao",25,1,-4,"a"],["modlao","ໂມເດີນລາວ","Modern Lao",28,.7,4,"a"],["thai","ໄທປະເພນີ","Traditional Thai",15,1.2,-2,"a"],["lanna","ລ້ານນາ","Lanna",22,.9,-8,"a"],["khmer","ຂະແມ","Khmer",30,.8,-6,"a"],["vietnam","ຫວຽດນາມ / ອິນໂດຈີນ","Vietnamese / Indochine",45,1,0,"a"],["chinese","ຈີນ","Chinese",355,1.4,-6,"a"],["japanese","ຍີ່ປຸ່ນ","Japanese",30,.4,-2,"a"],["japandi","Japandi","Japandi",35,.35,4,"a"],["korean","ເກົາຫຼີ (ຮັນອົກ)","Korean Hanok",25,.6,0,"a"],["balinese","ບາຫຼີ","Balinese",30,.9,-8,"a"],["indian","ອິນເດຍ","Indian",20,1.4,0,"a"],["mughal","ໂມກຸນ","Mughal",15,.8,6,"a"],["islamic","ອິສລາມ","Islamic",190,1.1,4,"a"],
+["classic","ຄລາສສິກ","Classical",40,.5,6,"e"],["neoclassic","ນີໂອຄລາສສິກ","Neoclassical",40,.4,8,"e"],["greek","ກຣີກ","Greek Revival",45,.2,10,"e"],["roman","ໂຣມັນ","Roman",30,.6,2,"e"],["gothic","ໂກທິກ","Gothic",220,.3,-14,"e"],["romanesque","ໂຣມາເນສກ໌","Romanesque",30,.5,-6,"e"],["renaissance","ເຣເນຊອງ","Renaissance",35,.7,2,"e"],["baroque","ບາໂຣກ","Baroque",42,1,-2,"e"],["rococo","ໂຣໂກໂກ","Rococo",340,.6,10,"e"],["victorian","ວິກຕໍເຣຍນ","Victorian",350,1.1,-6,"e"],["georgian","ຈໍຈຽນ","Georgian",15,.8,-4,"e"],["tudor","ທິວດໍ","Tudor",25,.6,-4,"e"],["colonial","ໂຄໂລນຽນ (ຝຣັ່ງ)","French Colonial",45,.9,4,"e"],["artnouveau","ອາຣ໌ນູໂວ","Art Nouveau",120,.8,-2,"e"],["artdeco","ອາຣ໌ດີໂຄ","Art Deco",40,1.1,-2,"e"],["mediterranean","ເມດິເຕີເຣນຽນ","Mediterranean",205,1.1,8,"e"],["santorini","ຊານໂຕຣີນີ (ຂາວ-ຟ້າ)","Santorini",210,1.3,14,"e"],["tuscan","ທັສຄັນ","Tuscan",25,1,-2,"e"],["provence","ໂພຣວອງສ໌ (French Country)","Provençal",260,.6,8,"e"],["nordic","ນໍດິກ / ສະແກນດີເນເວຍ","Scandinavian",200,.4,10,"e"],["chalet","ຊາເລ່ (ອາລ໌ປ)","Alpine Chalet",25,.7,-10,"e"],["english","ອັງກິດ Cottage","English Cottage",80,.6,4,"e"],
+["tropical","ທຣອປິຄອລ","Tropical",100,1,0,"o"],["tropmodern","ທຣອປິຄອລໂມເດີນ","Tropical Modern",90,.7,2,"o"],["resort","ຣີສອດ","Resort",170,.8,6,"o"],["moroccan","ໂມຣັອກໂຄ","Moroccan",15,1.3,-2,"o"],["arabic","ອາຣັບ / ທະເລຊາຍ","Arabic / Desert",35,.8,6,"o"],["persian","ເປີເຊຍ","Persian",195,1.2,0,"o"],["egyptian","ອີຢິບ","Egyptian",40,.8,4,"o"],["african","ອາຟຣິກາ","African Vernacular",20,1.1,-6,"o"],["spanish","ສະເປນ Colonial","Spanish Colonial",20,1,4,"o"],["mexican","ເມັກຊິໂກ","Mexican",330,1.5,0,"o"],["pueblo","ປູເອບໂລ (Adobe)","Pueblo / Adobe",22,.9,0,"o"],["caribbean","ຄາຣິບບຽນ","Caribbean",170,1.5,6,"o"],["craftsman","ຄຣາຟທ໌ສແມນ (ອາເມລິກາ)","Craftsman",80,.7,-6,"o"],["farmhouse","ຟາມເຮົາສ໌","Modern Farmhouse",0,.1,8,"o"],["prairie","ແພຣຣີ (F.L. Wright)","Prairie",30,.8,-8,"o"],["capecod","ເຄບຄອດ","Cape Cod",210,.6,6,"o"],["rustic","ຣັສຕິກ / ບ້ານໄມ້","Rustic",25,.8,-10,"o"],["vernacular","ພື້ນຖານທ້ອງຖິ່ນ","Vernacular",30,.8,-4,"o"],["eclectic","ອີເລັກຕິກ (ປະສົມ)","Eclectic",280,1.2,0,"o"]],
+climate:[["hot","ຮ້ອນ ແດດແຮງ","Hot, strong sun"],["humid","ຮ້ອນຊຸ່ມ ຝົນຫຼາຍ","Hot-humid, rainy"],["mountain","ພູດອຍ ອາກາດເຢັນ","Mountain, cool"],["city","ໃນເມືອງ","Urban"],["river","ແຄມນ້ຳ","Riverside"]],
+tone:[["earth","ສີດິນ / ທຳມະຊາດ","Earth / natural",28,[25,45],[30,70]],["warm","ໂທນອຸ່ນ","Warm",20,[35,60],[35,75]],["cool","ໂທນເຢັນ","Cool",205,[20,45],[35,78]],["neutral","ສີກາງ","Neutral",35,[4,12],[25,88]],["vivid","ສີສົດ","Vivid",12,[60,85],[40,65]],["pastel","Pastel","Pastel",180,[35,60],[72,90]]]};
+let lang=localStorage.getItem("cd_lang")||"lo",imgHex=[],current=[],view="res";
+const $=id=>document.getElementById(id), t=k=>T[lang][k]||k;
+const GROUPS={m:["ໂມເດີນ / ຮ່ວມສະໄໝ","Modern / Contemporary"],a:["ເອເຊຍ","Asian"],e:["ຢູໂຣບ / ຄລາສສິກ","European / Classical"],o:["ທຣອປິຄອລ, ອາເມລິກາ, ອາຟຣິກາ, ຕາເວັນອອກກາງ","Tropical, Americas, Africa, Middle East"]};
+const opt=o=>`<option value="${o[0]}">${lang=="lo"?o[1]:o[2]}</option>`;
+function fill(){for(const k of ["type","style","climate","tone"]){const s=$(k),v=s.value;
+ s.innerHTML=k=="style"?Object.entries(GROUPS).map(([g,n])=>`<optgroup label="${lang=="lo"?n[0]:n[1]}">${OPT.style.filter(o=>o[6]==g).map(opt).join("")}</optgroup>`).join(""):OPT[k].map(opt).join("");if(v)s.value=v}
+ document.querySelectorAll("[data-t]").forEach(e=>e.textContent=t(e.dataset.t));$("lang").textContent=lang=="lo"?"EN":"ລາວ";document.documentElement.lang=lang;render()}
+$("lang").onclick=()=>{lang=lang=="lo"?"en":"lo";try{localStorage.setItem("cd_lang",lang)}catch(e){}fill()};
+// color utils
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function hsl(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return"#"+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,"0")).join("")}
+function toHsl(hex){let[r,g,b]=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2,h=0,s=0;if(mx!=mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=mx==r?(g-b)/d+(g<b?6:0):mx==g?(b-r)/d+2:(r-g)/d+4;h*=60}return[h,s*100,l*100]}
+const rgb=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16)).join(", ");
+// rule engine
+function generate(){const tone=OPT.tone.find(o=>o[0]==$("tone").value),st=OPT.style.find(o=>o[0]==$("style").value),cl=$("climate").value,ty=$("type").value;
+ let base=imgHex.length?toHsl(imgHex[0])[0]:(tone[3]*.6+st[3]*.4)%360;let[s0,s1]=tone[4],[l0,l1]=tone[5];
+ s0*=st[4];s1=clamp(s1*st[4],5,95);l0=clamp(l0+st[5],10,80);l1=clamp(l1+st[5],30,94);
+ let wallL=l1,wallS=s0*.6;if(cl=="hot")wallL=Math.min(92,l1+6);if(cl=="mountain")wallL=l1-6;if(cl=="humid")wallS=s0*.8;if(st[0]=="minimal")wallS=Math.min(wallS,6);
+ const accBoost=["cafe","shop","school"].includes(ty)?12:ty=="hospital"||ty=="temple"?-10:0;
+ const H={mono:[0,0,0,0],analog:[0,-25,25,35],comp:[0,0,180,180],triad:[0,120,240,240],split:[0,150,210,210]};
+ const out=Object.entries(H).map(([k,o])=>({name:t(k),harmony:k,reason:"",colors:{
+  wall:hsl(base+o[0],wallS,wallL),roof:hsl(base+o[1],clamp(s1*.7,5,70),clamp(l0-5,15,45)),trim:hsl(base,clamp(s0*.3,2,20),cl=="hot"?95:90),
+  door:hsl(base+o[2],clamp(s1*.8,5,75),clamp((l0+l1)/2-15,20,55)),accent:hsl(base+o[3],clamp(s1+accBoost,10,90),clamp((l0+l1)/2,35,65))}}));
+ if(imgHex.length>=5){const c=[...imgHex].sort((a,b)=>toHsl(b)[2]-toHsl(a)[2]);out.unshift({name:t("fromImg"),harmony:"img",colors:{wall:c[0],trim:c[1],accent:c[2],door:c[3],roof:c[4]}})}
+ return out}
+// image extraction
+$("img").onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement("canvas"),W=80,H=Math.round(80*im.height/im.width);c.width=W;c.height=H;const x=c.getContext("2d");x.drawImage(im,0,0,W,H);const d=x.getImageData(0,0,W,H).data,b={};
+ for(let i=0;i<d.length;i+=4){const k=[d[i],d[i+1],d[i+2]].map(v=>v>>5).join();(b[k]=b[k]||{n:0,r:0,g:0,b:0}).n++;b[k].r+=d[i];b[k].g+=d[i+1];b[k].b+=d[i+2]}
+ imgHex=Object.values(b).sort((a,b)=>b.n-a.n).slice(0,6).map(v=>"#"+[v.r,v.g,v.b].map(c=>Math.round(c/v.n).toString(16).padStart(2,"0")).join(""));
+ $("imgColors").innerHTML=imgHex.map(h=>`<span style="background:${h}" title="${h}"></span>`).join("");URL.revokeObjectURL(im.src)};im.src=URL.createObjectURL(f)};
+// building svg
+function bld(c){return`<svg class="bld" viewBox="0 0 300 190" xmlns="http://www.w3.org/2000/svg"><rect width="300" height="190" fill="#d6e8f2"/><rect y="165" width="300" height="25" fill="#9cb38a"/>
+<polygon points="30,80 150,25 270,80" fill="${c.roof}"/><rect x="45" y="80" width="210" height="88" fill="${c.wall}"/><rect x="40" y="78" width="220" height="7" fill="${c.trim}"/><rect x="45" y="160" width="210" height="8" fill="${c.trim}"/>
+<rect x="132" y="108" width="36" height="57" fill="${c.door}"/><rect x="128" y="104" width="44" height="5" fill="${c.trim}"/>
+${[65,190].map(x=>`<rect x="${x}" y="100" width="45" height="38" fill="${c.trim}"/><rect x="${x+4}" y="104" width="37" height="30" fill="${c.door}" opacity=".85"/><line x1="${x+22.5}" y1="104" x2="${x+22.5}" y2="134" stroke="${c.trim}" stroke-width="3"/>`).join("")}
+<rect x="45" y="140" width="210" height="4" fill="${c.accent}"/><circle cx="150" cy="58" r="9" fill="${c.accent}"/></svg>`}
+const ROLES=["wall","roof","trim","door","accent"];
+function card(p,i,saved){return`<div class="card pal"><h3>${esc(p.harmony=="img"?t("fromImg"):T.en[p.harmony]&&!p.reason?t(p.harmony):p.name||"")}</h3><div class="sub">${esc(p.reason||"")}</div>${bld(p.colors)}
+ ${ROLES.map(r=>`<div class="sw"><i style="background:${p.colors[r]}"></i>${t(r)}<code title="RGB ${rgb(p.colors[r])}">${p.colors[r].toUpperCase()}</code></div>`).join("")}
+ <div class="row">${saved?`<button class="ghost" data-del="${i}">${t("del")}</button>`:`<button class="ghost" data-save="${i}">${t("save")}</button>`}<button class="ghost" data-png="${i}" data-s="${saved?1:0}">${t("png")}</button></div></div>`}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const getSaved=()=>{try{return JSON.parse(localStorage.getItem("cd_saved")||"[]")}catch(e){return[]}};
+const setSaved=a=>{try{localStorage.setItem("cd_saved",JSON.stringify(a))}catch(e){}};
+function render(){const list=view=="res"?current:getSaved();$("tabRes").className=view=="res"?"":"ghost";$("tabSaved").className=view=="res"?"ghost":"";
+ $("results").innerHTML=list.length?list.map((p,i)=>card(p,i,view!="res")).join(""):`<p class="note">${t("empty")}</p>`}
+$("results").onclick=e=>{const b=e.target;if(b.dataset.save){const a=getSaved();a.push(current[b.dataset.save]);setSaved(a);b.textContent="✓"}
+ if(b.dataset.del){const a=getSaved();a.splice(b.dataset.del,1);setSaved(a);render()}
+ if(b.dataset.png){const p=(b.dataset.s=="1"?getSaved():current)[b.dataset.png];exportPng(p)}
+ if(b.tagName=="CODE")navigator.clipboard?.writeText(b.textContent)};
+function exportPng(p){const c=document.createElement("canvas");c.width=900;c.height=640;const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,900,640);
+ const im=new Image();im.onload=()=>{x.drawImage(im,20,20,560,355);x.fillStyle="#222";x.font="bold 26px 'Noto Sans Lao',sans-serif";x.fillText(p.name||"",20,420);
+ ROLES.forEach((r,i)=>{const y=450+i*36;x.fillStyle=p.colors[r];x.fillRect(20,y,60,28);x.strokeStyle="#ccc";x.strokeRect(20,y,60,28);x.fillStyle="#222";x.font="18px 'Noto Sans Lao',sans-serif";x.fillText(`${t(r)}  ${p.colors[r].toUpperCase()}  (RGB ${rgb(p.colors[r])})`,95,y+21)});
+ ROLES.forEach((r,i)=>{x.fillStyle=p.colors[r];x.fillRect(600,20+i*71,280,71)});
+ const a=document.createElement("a");a.download=(p.name||"palette")+".png";a.href=c.toDataURL();a.click()};
+ im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(bld(p.colors))}
+$("gen").onclick=()=>{current=generate();view="res";render()};
+$("tabRes").onclick=()=>{view="res";render()};$("tabSaved").onclick=()=>{view="saved";render()};
+const lbl=k=>{const o=OPT[k].find(o=>o[0]==$(k).value);return o[2]};
+$("mkPrompt").onclick=()=>{$("promptBox").hidden=false;$("promptTxt").value=
+`You are an expert architectural color consultant. Design exterior color schemes for this building:
+- Building type: ${lbl("type")}
+- Architectural style: ${lbl("style")}
+- Climate / location: ${lbl("climate")} (Laos, Southeast Asia)
+- Preferred tone group: ${lbl("tone")}
+- Desired mood: ${$("mood").value||"not specified"}
+${imgHex.length?"- Colors extracted from my reference image: "+imgHex.join(", "):""}
+
+Create 4 harmonious palettes using different color-harmony principles (e.g. monochrome, analogous, complementary, triadic). Consider sun exposure, heat, dirt/mold in rain, local culture and durability of exterior paint.
+For each palette assign a color to: wall (main exterior wall), roof, trim (fascia/edges/frames), door (doors & window frames), accent.
+Write "name" and "reason" in ${lang=="lo"?"Lao language":"English"}.
+
+Reply with ONLY this JSON in a code block, nothing else:
+{"palettes":[{"name":"","harmony":"","reason":"","colors":{"wall":"#RRGGBB","roof":"#RRGGBB","trim":"#RRGGBB","door":"#RRGGBB","accent":"#RRGGBB"}}]}`};
+$("copy").onclick=()=>{navigator.clipboard?.writeText($("promptTxt").value);$("copy").textContent=t("copied")};
+$("load").onclick=()=>{try{let s=$("jsonIn").value;s=s.slice(s.indexOf("{"),s.lastIndexOf("}")+1);const j=JSON.parse(s);
+ current=j.palettes.filter(p=>p.colors&&ROLES.every(r=>/^#[0-9a-f]{6}$/i.test(p.colors[r])));if(!current.length)throw 0;view="res";render()}catch(e){alert(t("bad"))}};
+fill();current=generate();render();
+</script>
+</body>
+</html>
